@@ -1,4 +1,4 @@
-# @miblanchard/react-native-slider
+# @syn2203/react-native-slider
 
 [![Node.js CI](https://github.com/miblanchard/react-native-slider/actions/workflows/node.js.yml/badge.svg)](https://github.com/miblanchard/react-native-slider/actions/workflows/node.js.yml)
 [![npm version](https://img.shields.io/npm/v/@miblanchard/react-native-slider.svg?style=flat-square)](https://npmjs.org/package/@miblanchard/react-native-slider 'View this project on npm')
@@ -15,13 +15,13 @@ Try it out [live on Expo Snack](https://snack.expo.io/@miblanchard/@miblanchard-
 ## Install
 
 ```shell
-yarn add @miblanchard/react-native-slider
+yarn add @syn2203/react-native-slider
 ```
 
 or
 
 ```shell
-npm i --save @miblanchard/react-native-slider
+npm i --save @syn2203/react-native-slider
 ```
 
 Version 1.x.x only supports React Native >= 0.59.0
@@ -34,7 +34,7 @@ Version 1.x.x only supports React Native >= 0.59.0
 
 ```jsx
 import React from 'react';
-import {Slider} from '@miblanchard/react-native-slider';
+import {Slider} from '@syn2203/react-native-slider';
 import {AppRegistry, StyleSheet, View, Text} from 'react-native';
 
 class SliderExample extends React.Component {

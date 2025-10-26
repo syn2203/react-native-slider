@@ -10,7 +10,7 @@ function gitTagLatest() {
         '-a',
         `publish/npm/${version}`,
         '-m',
-        `Publish @miblanchard/react-native-slider v${version}`,
+        `Publish @syn2203/react-native-slider v${version}`,
     ]);
 }
 
