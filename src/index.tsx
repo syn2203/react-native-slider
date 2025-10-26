@@ -451,7 +451,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
 
         const buffer = step ? step : 0.1;
 
-        if (values.length === 2) {
+        if (values.length === 2 && !this.props.allowCrossover) {
             if (this._activeThumbIndex === 1) {
                 minValue = rawValues[0] + buffer;
             } else {
@@ -506,39 +506,8 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                     // Right thumb trying to go past left thumb
                     value = otherValue;
                 }
-            } else {
-                // Allow crossover with position swapping behavior
-                // When thumbs overlap, the moving thumb stays still and pushes the other thumb
-                if (safeIndex === 0 && value > otherValue) {
-                    // Left thumb trying to go past right thumb
-                    // Keep left thumb at the other thumb's position, move right thumb to new position
-                    const leftThumbNewValue = otherValue;
-                    const rightThumbNewValue = value;
-
-                    // Update both thumbs
-                    this.state.values[0].setValue(leftThumbNewValue);
-                    this.state.values[1].setValue(rightThumbNewValue);
-
-                    if (callback) {
-                        callback();
-                    }
-                    return; // Exit early since we've handled both thumbs
-                } else if (safeIndex === 1 && value < otherValue) {
-                    // Right thumb trying to go past left thumb
-                    // Keep right thumb at the other thumb's position, move left thumb to new position
-                    const rightThumbNewValue = otherValue;
-                    const leftThumbNewValue = value;
-
-                    // Update both thumbs
-                    this.state.values[0].setValue(leftThumbNewValue);
-                    this.state.values[1].setValue(rightThumbNewValue);
-
-                    if (callback) {
-                        callback();
-                    }
-                    return; // Exit early since we've handled both thumbs
-                }
             }
+            // When allowCrossover is true, allow the thumb to move freely without restrictions
         }
 
         if (animatedValue) {
@@ -694,7 +663,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
         thumbLeft: Animated.AnimatedInterpolation,
         index: number,
     ) => {
-        const {height, x, y, width} = this._getThumbTouchRect() || {};
+        const {height, x, y, width} = this._getThumbTouchRect(index) || {};
         const positionStyle = {
             height,
             left: x,
@@ -752,6 +721,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             step = 0,
             trackRightPadding,
             dualSlider,
+            allowCrossover,
             rangeTrackStyle,
             rangeTrackTintColor,
             ...other
@@ -840,22 +810,43 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             ...clearBorderRadius,
         } as ViewStyle;
 
-        // 双滑块范围轨道样式
+        // 双滑块范围轨道样式 - 使用条件渲染处理交叉情况
+        const currentValue0 = this._getRawValues(this.state.values)[0];
+        const currentValue1 = this._getRawValues(this.state.values)[1];
+        const isCrossed = allowCrossover && currentValue0 > currentValue1;
+
         const dualSliderRangeTrackStyle =
             dualSlider && interpolatedTrackValues.length >= 2
-                ? ({
-                      position: 'absolute',
-                      left: Animated.add(
-                          interpolatedTrackValues[0],
-                          thumbSize.width / 2,
-                      ),
-                      width: Animated.add(
-                          Animated.multiply(interpolatedTrackValues[0], -1),
-                          interpolatedTrackValues[1],
-                      ),
-                      backgroundColor: rangeTrackTintColor,
-                      ...valueVisibleStyle,
-                  } as ViewStyle)
+                ? (() => {
+                      const pos0 = interpolatedTrackValues[0];
+                      const pos1 = interpolatedTrackValues[1];
+
+                      if (isCrossed) {
+                          // When crossed: value0 > value1, so value0 is visually on right
+                          return {
+                              position: 'absolute',
+                              left: Animated.add(pos1, thumbSize.width / 2),
+                              width: Animated.add(
+                                  Animated.multiply(pos1, -1),
+                                  pos0,
+                              ),
+                              backgroundColor: rangeTrackTintColor,
+                              ...valueVisibleStyle,
+                          } as ViewStyle;
+                      } else {
+                          // Normal case: value0 <= value1
+                          return {
+                              position: 'absolute',
+                              left: Animated.add(pos0, thumbSize.width / 2),
+                              width: Animated.add(
+                                  Animated.multiply(pos0, -1),
+                                  pos1,
+                              ),
+                              backgroundColor: rangeTrackTintColor,
+                              ...valueVisibleStyle,
+                          } as ViewStyle;
+                      }
+                  })()
                 : null;
 
         const touchOverflowStyle = this._getTouchOverflowStyle();

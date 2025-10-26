@@ -318,7 +318,6 @@ const App = () => (
                     allowCrossover={true}
                     minimumValue={0}
                     maximumValue={100}
-                    // step={1}
                     minimumTrackTintColor="#1fb28a"
                     maximumTrackTintColor="#d3d3d3"
                     rangeTrackTintColor="#ff6b6b"
