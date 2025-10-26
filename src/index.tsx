@@ -792,23 +792,29 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             clearBorderRadius.borderBottomLeftRadius = 0;
         }
 
-        const minimumTrackStyle = {
-            position: 'absolute',
-            left:
-                interpolatedTrackValues.length === 1
-                    ? new Animated.Value(startPositionOnTrack)
-                    : Animated.add(minTrackWidth, thumbSize.width / 2),
-            width:
-                interpolatedTrackValues.length === 1
-                    ? Animated.add(minTrackWidth, thumbSize.width / 2)
-                    : Animated.add(
-                          Animated.multiply(minTrackWidth, -1),
-                          maxTrackWidth,
-                      ),
-            backgroundColor: minimumTrackTintColor,
-            ...valueVisibleStyle,
-            ...clearBorderRadius,
-        } as ViewStyle;
+        const minimumTrackStyle =
+            minimumTrackTintColor === 'transparent'
+                ? null
+                : ({
+                      position: 'absolute',
+                      left:
+                          interpolatedTrackValues.length === 1
+                              ? new Animated.Value(startPositionOnTrack)
+                              : Animated.add(
+                                    minTrackWidth,
+                                    thumbSize.width / 2,
+                                ),
+                      width:
+                          interpolatedTrackValues.length === 1
+                              ? Animated.add(minTrackWidth, thumbSize.width / 2)
+                              : Animated.add(
+                                    Animated.multiply(minTrackWidth, -1),
+                                    maxTrackWidth,
+                                ),
+                      backgroundColor: minimumTrackTintColor,
+                      ...valueVisibleStyle,
+                      ...clearBorderRadius,
+                  } as ViewStyle);
 
         // 双滑块范围轨道样式
         const dualSliderRangeTrackStyle =
@@ -839,6 +845,11 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                           rightPos = pos1;
                       }
 
+                      // 如果 rangeTrackTintColor 为 transparent，返回 null 不渲染
+                      if (rangeTrackTintColor === 'transparent') {
+                          return null;
+                      }
+
                       // 创建通用的轨道样式
                       return {
                           position: 'absolute',
@@ -848,6 +859,99 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                               rightPos,
                           ),
                           backgroundColor: rangeTrackTintColor,
+                          ...valueVisibleStyle,
+                      } as ViewStyle;
+                  })()
+                : null;
+
+        // 最大值右侧的未选中区域（仅当底色为透明且选中为透明时渲染）
+        const rightUnselectedTrackStyle =
+            maximumTrackTintColor !== 'transparent' &&
+            (minimumTrackTintColor === 'transparent' ||
+                rangeTrackTintColor === 'transparent')
+                ? (() => {
+                      if (interpolatedTrackValues.length === 1) {
+                          // 单滑块：从滑块右侧到轨道右端
+                          return {
+                              position: 'absolute',
+                              top: (containerSize.height - 4) / 2, // 与轨道高度对齐
+                              left: Animated.add(
+                                  interpolatedTrackValues[0],
+                                  thumbSize.width,
+                              ),
+                              right: 0,
+                              height: 4, // 与轨道高度一致
+                              backgroundColor: maximumTrackTintColor,
+                              ...valueVisibleStyle,
+                          } as ViewStyle;
+                      } else if (
+                          dualSlider &&
+                          interpolatedTrackValues.length >= 2
+                      ) {
+                          // 双滑块：从视觉上最右边的滑块右侧到轨道右端
+                          // 需要判断是否交叉
+                          let rightmostPos;
+                          if (allowCrossover) {
+                              const currentValue0 =
+                                  this.state.values[0].__getValue();
+                              const currentValue1 =
+                                  this.state.values[1].__getValue();
+                              const isCrossed = currentValue0 > currentValue1;
+                              // 交叉时，value0 在右边；否则 value1 在右边
+                              rightmostPos = isCrossed
+                                  ? interpolatedTrackValues[0]
+                                  : interpolatedTrackValues[1];
+                          } else {
+                              // 未允许交叉，value1 总是在右边
+                              rightmostPos = interpolatedTrackValues[1];
+                          }
+
+                          return {
+                              position: 'absolute',
+                              top: (containerSize.height - 4) / 2, // 与轨道高度对齐
+                              left: Animated.add(rightmostPos, thumbSize.width),
+                              right: 0,
+                              height: 4, // 与轨道高度一致
+                              backgroundColor: maximumTrackTintColor,
+                              ...valueVisibleStyle,
+                          } as ViewStyle;
+                      }
+                      return null;
+                  })()
+                : null;
+
+        // 最小值左侧的未选中区域（双滑块且透明时）
+        const leftUnselectedTrackStyle =
+            dualSlider &&
+            interpolatedTrackValues.length >= 2 &&
+            maximumTrackTintColor !== 'transparent' &&
+            (minimumTrackTintColor === 'transparent' ||
+                rangeTrackTintColor === 'transparent')
+                ? (() => {
+                      // 需要判断是否交叉来确定视觉上的最左边位置
+                      let leftmostPos;
+                      if (allowCrossover) {
+                          const currentValue0 =
+                              this.state.values[0].__getValue();
+                          const currentValue1 =
+                              this.state.values[1].__getValue();
+                          const isCrossed = currentValue0 > currentValue1;
+                          // 交叉时，value1 在左边；否则 value0 在左边
+                          leftmostPos = isCrossed
+                              ? interpolatedTrackValues[1]
+                              : interpolatedTrackValues[0];
+                      } else {
+                          // 未允许交叉，value0 总是在左边
+                          leftmostPos = interpolatedTrackValues[0];
+                      }
+
+                      return {
+                          position: 'absolute',
+                          top: (containerSize.height - 4) / 2, // 与轨道高度对齐
+                          left: 0,
+                          width: Animated.add(leftmostPos, thumbSize.width / 2),
+                          height: 4, // 与轨道高度一致
+                          backgroundColor: maximumTrackTintColor,
                           ...valueVisibleStyle,
                       } as ViewStyle;
                   })()
@@ -901,34 +1005,44 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                         containerStyle,
                     ]}
                     onLayout={this._measureContainer}>
-                    <View
-                        renderToHardwareTextureAndroid
-                        style={[
-                            styles.track,
-                            {
-                                backgroundColor: maximumTrackTintColor,
-                            },
-                            trackStyle,
-                            propMaximumTrackStyle,
-                        ]}
-                        onLayout={this._measureTrack}>
-                        {renderMaximumTrackComponent
-                            ? renderMaximumTrackComponent()
-                            : null}
-                    </View>
+                    {/* 底层背景 - 仅当底色不为 transparent 且没有使用新的未选中区域时渲染全轨道 */}
+                    {maximumTrackTintColor !== 'transparent' &&
+                        !(
+                            (minimumTrackTintColor === 'transparent' ||
+                                rangeTrackTintColor === 'transparent') &&
+                            maximumTrackTintColor !== 'transparent'
+                        ) && (
+                            <View
+                                renderToHardwareTextureAndroid
+                                style={[
+                                    styles.track,
+                                    {
+                                        backgroundColor: maximumTrackTintColor,
+                                    },
+                                    trackStyle,
+                                    propMaximumTrackStyle,
+                                ]}
+                                onLayout={this._measureTrack}>
+                                {renderMaximumTrackComponent
+                                    ? renderMaximumTrackComponent()
+                                    : null}
+                            </View>
+                        )}
 
-                    <Animated.View
-                        renderToHardwareTextureAndroid
-                        style={[
-                            styles.track,
-                            trackStyle,
-                            minimumTrackStyle,
-                            propMinimumTrackStyle,
-                        ]}>
-                        {renderMinimumTrackComponent
-                            ? renderMinimumTrackComponent()
-                            : null}
-                    </Animated.View>
+                    {minimumTrackStyle && (
+                        <Animated.View
+                            renderToHardwareTextureAndroid
+                            style={[
+                                styles.track,
+                                trackStyle,
+                                minimumTrackStyle,
+                                propMinimumTrackStyle,
+                            ]}>
+                            {renderMinimumTrackComponent
+                                ? renderMinimumTrackComponent()
+                                : null}
+                        </Animated.View>
+                    )}
 
                     {/* 双滑块范围轨道 */}
                     {dualSliderRangeTrackStyle && (
@@ -942,6 +1056,31 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                             ]}
                         />
                     )}
+
+                    {/* 最小值左侧的未选中区域 */}
+                    {leftUnselectedTrackStyle && (
+                        <Animated.View
+                            renderToHardwareTextureAndroid
+                            style={[
+                                styles.track,
+                                trackStyle,
+                                leftUnselectedTrackStyle,
+                            ]}
+                        />
+                    )}
+
+                    {/* 最大值右侧的未选中区域 */}
+                    {rightUnselectedTrackStyle && (
+                        <Animated.View
+                            renderToHardwareTextureAndroid
+                            style={[
+                                styles.track,
+                                trackStyle,
+                                rightUnselectedTrackStyle,
+                            ]}
+                        />
+                    )}
+
                     {renderTrackMarkComponent &&
                         interpolatedTrackMarksValues &&
                         interpolatedTrackMarksValues.map((value, i) => (
