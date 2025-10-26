@@ -734,6 +734,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             values,
         } = this.state;
         const rightPadding = trackRightPadding ?? thumbSize.width;
+        const isCrossoverMode = dualSlider && allowCrossover;
         const _startFromZero =
             values.length === 1 && minimumValue < 0 && maximumValue > 0
                 ? startFromZero
@@ -792,77 +793,75 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             clearBorderRadius.borderBottomLeftRadius = 0;
         }
 
-        const minimumTrackStyle =
-            minimumTrackTintColor === 'transparent'
-                ? null
-                : ({
+        // 如果是交叉模式，跳过所有样式计算
+        const minimumTrackStyle = isCrossoverMode
+            ? null
+            : minimumTrackTintColor === 'transparent'
+            ? null
+            : ({
+                  position: 'absolute',
+                  left:
+                      interpolatedTrackValues.length === 1
+                          ? new Animated.Value(startPositionOnTrack)
+                          : Animated.add(minTrackWidth, thumbSize.width / 2),
+                  width:
+                      interpolatedTrackValues.length === 1
+                          ? Animated.add(minTrackWidth, thumbSize.width / 2)
+                          : Animated.add(
+                                Animated.multiply(minTrackWidth, -1),
+                                maxTrackWidth,
+                            ),
+                  backgroundColor: minimumTrackTintColor,
+                  ...valueVisibleStyle,
+                  ...clearBorderRadius,
+              } as ViewStyle);
+
+        // 双滑块范围轨道样式（交叉模式下跳过）
+        const dualSliderRangeTrackStyle = isCrossoverMode
+            ? null
+            : dualSlider && interpolatedTrackValues.length >= 2
+            ? (() => {
+                  const pos0 = interpolatedTrackValues[0];
+                  const pos1 = interpolatedTrackValues[1];
+
+                  // 判断是否交叉（仅在允许交叉时检查）
+                  let isCrossed = false;
+                  let leftPos, rightPos;
+
+                  if (allowCrossover) {
+                      const currentValue0 = this.state.values[0].__getValue();
+                      const currentValue1 = this.state.values[1].__getValue();
+                      isCrossed = currentValue0 > currentValue1;
+                  }
+
+                  if (isCrossed) {
+                      // 交叉：value0 在右边，value1 在左边
+                      leftPos = pos1;
+                      rightPos = pos0;
+                  } else {
+                      // 正常：value0 在左边，value1 在右边
+                      leftPos = pos0;
+                      rightPos = pos1;
+                  }
+
+                  // 如果 rangeTrackTintColor 为 transparent，返回 null 不渲染
+                  if (rangeTrackTintColor === 'transparent') {
+                      return null;
+                  }
+
+                  // 创建通用的轨道样式
+                  return {
                       position: 'absolute',
-                      left:
-                          interpolatedTrackValues.length === 1
-                              ? new Animated.Value(startPositionOnTrack)
-                              : Animated.add(
-                                    minTrackWidth,
-                                    thumbSize.width / 2,
-                                ),
-                      width:
-                          interpolatedTrackValues.length === 1
-                              ? Animated.add(minTrackWidth, thumbSize.width / 2)
-                              : Animated.add(
-                                    Animated.multiply(minTrackWidth, -1),
-                                    maxTrackWidth,
-                                ),
-                      backgroundColor: minimumTrackTintColor,
+                      left: Animated.add(leftPos, thumbSize.width / 2),
+                      width: Animated.add(
+                          Animated.multiply(leftPos, -1),
+                          rightPos,
+                      ),
+                      backgroundColor: rangeTrackTintColor,
                       ...valueVisibleStyle,
-                      ...clearBorderRadius,
-                  } as ViewStyle);
-
-        // 双滑块范围轨道样式
-        const dualSliderRangeTrackStyle =
-            dualSlider && interpolatedTrackValues.length >= 2
-                ? (() => {
-                      const pos0 = interpolatedTrackValues[0];
-                      const pos1 = interpolatedTrackValues[1];
-
-                      // 判断是否交叉（仅在允许交叉时检查）
-                      let isCrossed = false;
-                      let leftPos, rightPos;
-
-                      if (allowCrossover) {
-                          const currentValue0 =
-                              this.state.values[0].__getValue();
-                          const currentValue1 =
-                              this.state.values[1].__getValue();
-                          isCrossed = currentValue0 > currentValue1;
-                      }
-
-                      if (isCrossed) {
-                          // 交叉：value0 在右边，value1 在左边
-                          leftPos = pos1;
-                          rightPos = pos0;
-                      } else {
-                          // 正常：value0 在左边，value1 在右边
-                          leftPos = pos0;
-                          rightPos = pos1;
-                      }
-
-                      // 如果 rangeTrackTintColor 为 transparent，返回 null 不渲染
-                      if (rangeTrackTintColor === 'transparent') {
-                          return null;
-                      }
-
-                      // 创建通用的轨道样式
-                      return {
-                          position: 'absolute',
-                          left: Animated.add(leftPos, thumbSize.width / 2),
-                          width: Animated.add(
-                              Animated.multiply(leftPos, -1),
-                              rightPos,
-                          ),
-                          backgroundColor: rangeTrackTintColor,
-                          ...valueVisibleStyle,
-                      } as ViewStyle;
-                  })()
-                : null;
+                  } as ViewStyle;
+              })()
+            : null;
 
         // 获取轨道高度（用于未选中区域的渲染）
         const trackHeight =
@@ -870,104 +869,101 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                 ? trackStyle.height
                 : styles.track && typeof styles.track.height === 'number'
                 ? styles.track.height
-                : 4; // 默认高度
-        const trackTop = (containerSize.height - trackHeight) / 2; // 计算 top 位置以垂直居中
+                : 4;
+        const trackTop = (containerSize.height - trackHeight) / 2;
 
-        // 最大值右侧的未选中区域（仅当底色为透明且选中为透明时渲染）
-        const rightUnselectedTrackStyle =
-            maximumTrackTintColor !== 'transparent' &&
-            (minimumTrackTintColor === 'transparent' ||
-                rangeTrackTintColor === 'transparent')
-                ? (() => {
-                      if (interpolatedTrackValues.length === 1) {
-                          // 单滑块：从滑块右侧到轨道右端
-                          return {
-                              position: 'absolute',
-                              top: trackTop,
-                              left: Animated.add(
-                                  interpolatedTrackValues[0],
-                                  thumbSize.width / 2,
-                              ),
-                              right: 0,
-                              height: trackHeight,
-                              backgroundColor: maximumTrackTintColor,
-                              ...valueVisibleStyle,
-                          } as ViewStyle;
-                      } else if (
-                          dualSlider &&
-                          interpolatedTrackValues.length >= 2
-                      ) {
-                          // 双滑块：从视觉上最右边的滑块右侧到轨道右端
-                          // 需要判断是否交叉
-                          let rightmostPos;
-                          if (allowCrossover) {
-                              const currentValue0 =
-                                  this.state.values[0].__getValue();
-                              const currentValue1 =
-                                  this.state.values[1].__getValue();
-                              const isCrossed = currentValue0 > currentValue1;
-                              // 交叉时，value0 在右边；否则 value1 在右边
-                              rightmostPos = isCrossed
-                                  ? interpolatedTrackValues[0]
-                                  : interpolatedTrackValues[1];
-                          } else {
-                              // 未允许交叉，value1 总是在右边
-                              rightmostPos = interpolatedTrackValues[1];
-                          }
-
-                          return {
-                              position: 'absolute',
-                              top: trackTop,
-                              left: Animated.add(
-                                  rightmostPos,
-                                  thumbSize.width / 2,
-                              ),
-                              right: 0,
-                              height: trackHeight,
-                              backgroundColor: maximumTrackTintColor,
-                              ...valueVisibleStyle,
-                          } as ViewStyle;
-                      }
-                      return null;
-                  })()
-                : null;
-
-        // 最小值左侧的未选中区域（双滑块且透明时）
-        const leftUnselectedTrackStyle =
-            dualSlider &&
-            interpolatedTrackValues.length >= 2 &&
-            maximumTrackTintColor !== 'transparent' &&
-            (minimumTrackTintColor === 'transparent' ||
-                rangeTrackTintColor === 'transparent')
-                ? (() => {
-                      // 需要判断是否交叉来确定视觉上的最左边位置
-                      let leftmostPos;
+        // 最大值右侧的未选中区域（仅当底色为透明且选中为透明时渲染）（交叉模式下跳过）
+        const rightUnselectedTrackStyle = isCrossoverMode
+            ? null
+            : maximumTrackTintColor !== 'transparent' &&
+              (minimumTrackTintColor === 'transparent' ||
+                  rangeTrackTintColor === 'transparent')
+            ? (() => {
+                  if (interpolatedTrackValues.length === 1) {
+                      // 单滑块：从滑块右侧到轨道右端
+                      return {
+                          position: 'absolute',
+                          top: trackTop,
+                          left: Animated.add(
+                              interpolatedTrackValues[0],
+                              thumbSize.width / 2,
+                          ),
+                          right: 0,
+                          height: trackHeight,
+                          backgroundColor: maximumTrackTintColor,
+                          ...valueVisibleStyle,
+                      } as ViewStyle;
+                  } else if (
+                      dualSlider &&
+                      interpolatedTrackValues.length >= 2
+                  ) {
+                      // 双滑块：从视觉上最右边的滑块右侧到轨道右端
+                      // 需要判断是否交叉
+                      let rightmostPos;
                       if (allowCrossover) {
                           const currentValue0 =
                               this.state.values[0].__getValue();
                           const currentValue1 =
                               this.state.values[1].__getValue();
                           const isCrossed = currentValue0 > currentValue1;
-                          // 交叉时，value1 在左边；否则 value0 在左边
-                          leftmostPos = isCrossed
-                              ? interpolatedTrackValues[1]
-                              : interpolatedTrackValues[0];
+                          // 交叉时，value0 在右边；否则 value1 在右边
+                          rightmostPos = isCrossed
+                              ? interpolatedTrackValues[0]
+                              : interpolatedTrackValues[1];
                       } else {
-                          // 未允许交叉，value0 总是在左边
-                          leftmostPos = interpolatedTrackValues[0];
+                          // 未允许交叉，value1 总是在右边
+                          rightmostPos = interpolatedTrackValues[1];
                       }
 
                       return {
                           position: 'absolute',
                           top: trackTop,
-                          left: 0,
-                          width: Animated.add(leftmostPos, thumbSize.width / 2),
+                          left: Animated.add(rightmostPos, thumbSize.width / 2),
+                          right: 0,
                           height: trackHeight,
                           backgroundColor: maximumTrackTintColor,
                           ...valueVisibleStyle,
                       } as ViewStyle;
-                  })()
-                : null;
+                  }
+                  return null;
+              })()
+            : null;
+
+        // 最小值左侧的未选中区域（双滑块且透明时）（交叉模式下跳过）
+        const leftUnselectedTrackStyle = isCrossoverMode
+            ? null
+            : dualSlider &&
+              interpolatedTrackValues.length >= 2 &&
+              maximumTrackTintColor !== 'transparent' &&
+              (minimumTrackTintColor === 'transparent' ||
+                  rangeTrackTintColor === 'transparent')
+            ? (() => {
+                  // 需要判断是否交叉来确定视觉上的最左边位置
+                  let leftmostPos;
+                  if (allowCrossover) {
+                      const currentValue0 = this.state.values[0].__getValue();
+                      const currentValue1 = this.state.values[1].__getValue();
+                      const isCrossed = currentValue0 > currentValue1;
+                      // 交叉时，value1 在左边；否则 value0 在左边
+                      leftmostPos = isCrossed
+                          ? interpolatedTrackValues[1]
+                          : interpolatedTrackValues[0];
+                  } else {
+                      // 未允许交叉，value0 总是在左边
+                      leftmostPos = interpolatedTrackValues[0];
+                  }
+
+                  return {
+                      position: 'absolute',
+                      top: trackTop,
+                      left: 0,
+                      width: Animated.add(leftmostPos, thumbSize.width / 2),
+                      height: trackHeight,
+                      backgroundColor: maximumTrackTintColor,
+                      ...valueVisibleStyle,
+                  } as ViewStyle;
+              })()
+            : null;
 
         const touchOverflowStyle = this._getTouchOverflowStyle();
 
@@ -1020,38 +1016,28 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                     {/* 底层背景 - 渲染全轨道背景的条件：
                         1. 底色不为 transparent
                         2. 选中区域和范围都不透明（如果它们透明，会用未选中区域单独渲染）
+                        3. 如果是双滑块交叉模式，跳过渲染（由上层实现）
                     */}
-                    {(() => {
-                        const shouldRenderFullTrack =
-                            maximumTrackTintColor !== 'transparent' &&
-                            minimumTrackTintColor !== 'transparent' &&
-                            (dualSlider
-                                ? rangeTrackTintColor !== 'transparent'
-                                : true);
+                    {!isCrossoverMode &&
+                        maximumTrackTintColor !== 'transparent' &&
+                        minimumTrackTintColor !== 'transparent' &&
+                        (dualSlider
+                            ? rangeTrackTintColor !== 'transparent'
+                            : true) && (
+                            <View
+                                renderToHardwareTextureAndroid
+                                style={[
+                                    styles.track,
+                                    {backgroundColor: maximumTrackTintColor},
+                                    trackStyle,
+                                    propMaximumTrackStyle,
+                                ]}
+                                onLayout={this._measureTrack}>
+                                {renderMaximumTrackComponent?.()}
+                            </View>
+                        )}
 
-                        return (
-                            shouldRenderFullTrack && (
-                                <View
-                                    renderToHardwareTextureAndroid
-                                    style={[
-                                        styles.track,
-                                        {
-                                            backgroundColor:
-                                                maximumTrackTintColor,
-                                        },
-                                        trackStyle,
-                                        propMaximumTrackStyle,
-                                    ]}
-                                    onLayout={this._measureTrack}>
-                                    {renderMaximumTrackComponent
-                                        ? renderMaximumTrackComponent()
-                                        : null}
-                                </View>
-                            )
-                        );
-                    })()}
-
-                    {minimumTrackStyle && (
+                    {minimumTrackStyle && !isCrossoverMode && (
                         <Animated.View
                             renderToHardwareTextureAndroid
                             style={[
@@ -1060,14 +1046,12 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                                 minimumTrackStyle,
                                 propMinimumTrackStyle,
                             ]}>
-                            {renderMinimumTrackComponent
-                                ? renderMinimumTrackComponent()
-                                : null}
+                            {renderMinimumTrackComponent?.()}
                         </Animated.View>
                     )}
 
                     {/* 双滑块范围轨道 */}
-                    {dualSliderRangeTrackStyle && (
+                    {dualSliderRangeTrackStyle && !isCrossoverMode && (
                         <Animated.View
                             renderToHardwareTextureAndroid
                             style={[
@@ -1079,8 +1063,8 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                         />
                     )}
 
-                    {/* 最小值左侧的未选中区域 */}
-                    {leftUnselectedTrackStyle && (
+                    {/* 未选中区域 */}
+                    {leftUnselectedTrackStyle && !isCrossoverMode && (
                         <Animated.View
                             renderToHardwareTextureAndroid
                             style={[
@@ -1090,9 +1074,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                             ]}
                         />
                     )}
-
-                    {/* 最大值右侧的未选中区域 */}
-                    {rightUnselectedTrackStyle && (
+                    {rightUnselectedTrackStyle && !isCrossoverMode && (
                         <Animated.View
                             renderToHardwareTextureAndroid
                             style={[
