@@ -318,7 +318,7 @@ const App = () => (
                     allowCrossover={true}
                     minimumValue={0}
                     maximumValue={100}
-                    minimumTrackTintColor="#1fb28a"
+                    minimumTrackTintColor="#d3d3d3"
                     maximumTrackTintColor="#d3d3d3"
                     rangeTrackTintColor="#ff6b6b"
                     thumbTintColor="#1a9274"

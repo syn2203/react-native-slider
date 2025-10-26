@@ -810,42 +810,46 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             ...clearBorderRadius,
         } as ViewStyle;
 
-        // 双滑块范围轨道样式 - 使用条件渲染处理交叉情况
-        const currentValue0 = this._getRawValues(this.state.values)[0];
-        const currentValue1 = this._getRawValues(this.state.values)[1];
-        const isCrossed = allowCrossover && currentValue0 > currentValue1;
-
+        // 双滑块范围轨道样式
         const dualSliderRangeTrackStyle =
             dualSlider && interpolatedTrackValues.length >= 2
                 ? (() => {
                       const pos0 = interpolatedTrackValues[0];
                       const pos1 = interpolatedTrackValues[1];
 
-                      if (isCrossed) {
-                          // When crossed: value0 > value1, so value0 is visually on right
-                          return {
-                              position: 'absolute',
-                              left: Animated.add(pos1, thumbSize.width / 2),
-                              width: Animated.add(
-                                  Animated.multiply(pos1, -1),
-                                  pos0,
-                              ),
-                              backgroundColor: rangeTrackTintColor,
-                              ...valueVisibleStyle,
-                          } as ViewStyle;
-                      } else {
-                          // Normal case: value0 <= value1
-                          return {
-                              position: 'absolute',
-                              left: Animated.add(pos0, thumbSize.width / 2),
-                              width: Animated.add(
-                                  Animated.multiply(pos0, -1),
-                                  pos1,
-                              ),
-                              backgroundColor: rangeTrackTintColor,
-                              ...valueVisibleStyle,
-                          } as ViewStyle;
+                      // 判断是否交叉（仅在允许交叉时检查）
+                      let isCrossed = false;
+                      let leftPos, rightPos;
+
+                      if (allowCrossover) {
+                          const currentValue0 =
+                              this.state.values[0].__getValue();
+                          const currentValue1 =
+                              this.state.values[1].__getValue();
+                          isCrossed = currentValue0 > currentValue1;
                       }
+
+                      if (isCrossed) {
+                          // 交叉：value0 在右边，value1 在左边
+                          leftPos = pos1;
+                          rightPos = pos0;
+                      } else {
+                          // 正常：value0 在左边，value1 在右边
+                          leftPos = pos0;
+                          rightPos = pos1;
+                      }
+
+                      // 创建通用的轨道样式
+                      return {
+                          position: 'absolute',
+                          left: Animated.add(leftPos, thumbSize.width / 2),
+                          width: Animated.add(
+                              Animated.multiply(leftPos, -1),
+                              rightPos,
+                          ),
+                          backgroundColor: rangeTrackTintColor,
+                          ...valueVisibleStyle,
+                      } as ViewStyle;
                   })()
                 : null;
 
