@@ -1017,29 +1017,39 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                         containerStyle,
                     ]}
                     onLayout={this._measureContainer}>
-                    {/* 底层背景 - 仅当底色不为 transparent 且没有使用新的未选中区域时渲染全轨道 */}
-                    {maximumTrackTintColor !== 'transparent' &&
-                        !(
-                            (minimumTrackTintColor === 'transparent' ||
-                                rangeTrackTintColor === 'transparent') &&
-                            maximumTrackTintColor !== 'transparent'
-                        ) && (
-                            <View
-                                renderToHardwareTextureAndroid
-                                style={[
-                                    styles.track,
-                                    {
-                                        backgroundColor: maximumTrackTintColor,
-                                    },
-                                    trackStyle,
-                                    propMaximumTrackStyle,
-                                ]}
-                                onLayout={this._measureTrack}>
-                                {renderMaximumTrackComponent
-                                    ? renderMaximumTrackComponent()
-                                    : null}
-                            </View>
-                        )}
+                    {/* 底层背景 - 渲染全轨道背景的条件：
+                        1. 底色不为 transparent
+                        2. 选中区域和范围都不透明（如果它们透明，会用未选中区域单独渲染）
+                    */}
+                    {(() => {
+                        const shouldRenderFullTrack =
+                            maximumTrackTintColor !== 'transparent' &&
+                            minimumTrackTintColor !== 'transparent' &&
+                            (dualSlider
+                                ? rangeTrackTintColor !== 'transparent'
+                                : true);
+
+                        return (
+                            shouldRenderFullTrack && (
+                                <View
+                                    renderToHardwareTextureAndroid
+                                    style={[
+                                        styles.track,
+                                        {
+                                            backgroundColor:
+                                                maximumTrackTintColor,
+                                        },
+                                        trackStyle,
+                                        propMaximumTrackStyle,
+                                    ]}
+                                    onLayout={this._measureTrack}>
+                                    {renderMaximumTrackComponent
+                                        ? renderMaximumTrackComponent()
+                                        : null}
+                                </View>
+                            )
+                        );
+                    })()}
 
                     {minimumTrackStyle && (
                         <Animated.View
