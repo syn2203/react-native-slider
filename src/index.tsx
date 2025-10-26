@@ -1086,7 +1086,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                             style={[
                                 styles.track,
                                 trackStyle,
-                                leftUnselectedTrackStyle,
+                                leftUnselectedTrackStyle as ViewStyle,
                             ]}
                         />
                     )}
@@ -1098,7 +1098,7 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                             style={[
                                 styles.track,
                                 trackStyle,
-                                rightUnselectedTrackStyle,
+                                rightUnselectedTrackStyle as ViewStyle,
                             ]}
                         />
                     )}
