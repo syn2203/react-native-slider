@@ -1,6 +1,6 @@
 {
     "name": "@syn2203/react-native-slider",
-    "version": "2.9.2",
+    "version": "2.9.3",
     "description": "A pure JavaScript <Slider /> component for react-native",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
