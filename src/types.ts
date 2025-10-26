@@ -64,6 +64,22 @@ export type SliderProps = {
      */
     startFromZero?: boolean;
     vertical?: boolean;
+    /**
+     * Enable dual slider mode with range selection
+     */
+    dualSlider?: boolean;
+    /**
+     * Allow thumbs to cross over each other
+     */
+    allowCrossover?: boolean;
+    /**
+     * Style for the range track between two thumbs in dual slider mode
+     */
+    rangeTrackStyle?: ViewStyle;
+    /**
+     * Color for the range track between two thumbs
+     */
+    rangeTrackTintColor?: string;
 };
 
 export type SliderState = {

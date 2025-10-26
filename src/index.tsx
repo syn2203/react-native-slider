@@ -76,10 +76,14 @@ const normalizeValue = (
     value?: number | Array<number>,
 ): Array<number> => {
     if (!value || (Array.isArray(value) && value.length === 0)) {
+        // For dual slider mode, return two values
+        if (props.dualSlider) {
+            return [props.minimumValue, props.maximumValue];
+        }
         return [0];
     }
 
-    const {maximumValue, minimumValue} = props;
+    const {maximumValue, minimumValue, dualSlider, allowCrossover} = props;
 
     const getBetweenValue = (inputValue: number) =>
         Math.max(Math.min(inputValue, maximumValue), minimumValue);
@@ -88,7 +92,32 @@ const normalizeValue = (
         return [getBetweenValue(value)];
     }
 
-    return value.map(getBetweenValue).sort((a, b) => a - b);
+    const normalizedValues = value.map(getBetweenValue);
+
+    // For dual slider mode, ensure we have exactly 2 values
+    if (dualSlider) {
+        if (normalizedValues.length === 1) {
+            // If only one value provided, create a range
+            const singleValue = normalizedValues[0];
+            const range = (maximumValue - minimumValue) * 0.1; // 10% of range
+            return [
+                Math.max(singleValue - range, minimumValue),
+                Math.min(singleValue + range, maximumValue),
+            ];
+        } else if (normalizedValues.length >= 2) {
+            // Take first two values
+            let [val1, val2] = normalizedValues.slice(0, 2);
+
+            // Handle crossover logic
+            if (!allowCrossover && val1 > val2) {
+                [val1, val2] = [val2, val1];
+            }
+
+            return [val1, val2];
+        }
+    }
+
+    return normalizedValues.sort((a, b) => a - b);
 };
 
 const updateValues = ({
@@ -190,6 +219,9 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
         value: 0,
         vertical: false,
         startFromZero: false,
+        dualSlider: false,
+        allowCrossover: true,
+        rangeTrackTintColor: '#3f3f3f',
     };
 
     static getDerivedStateFromProps(props: SliderProps, state: SliderState) {
@@ -460,6 +492,55 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
         const safeIndex = thumbIndex ?? 0;
         const animatedValue = this.state.values[safeIndex];
 
+        // Handle dual slider crossover logic
+        if (this.props.dualSlider && this.state.values.length >= 2) {
+            const otherIndex = safeIndex === 0 ? 1 : 0;
+            const otherValue = this.state.values[otherIndex]?.__getValue() || 0;
+
+            if (!this.props.allowCrossover) {
+                // Prevent crossover - clamp values
+                if (safeIndex === 0 && value > otherValue) {
+                    // Left thumb trying to go past right thumb
+                    value = otherValue;
+                } else if (safeIndex === 1 && value < otherValue) {
+                    // Right thumb trying to go past left thumb
+                    value = otherValue;
+                }
+            } else {
+                // Allow crossover with position swapping behavior
+                // When thumbs overlap, the moving thumb stays still and pushes the other thumb
+                if (safeIndex === 0 && value > otherValue) {
+                    // Left thumb trying to go past right thumb
+                    // Keep left thumb at the other thumb's position, move right thumb to new position
+                    const leftThumbNewValue = otherValue;
+                    const rightThumbNewValue = value;
+
+                    // Update both thumbs
+                    this.state.values[0].setValue(leftThumbNewValue);
+                    this.state.values[1].setValue(rightThumbNewValue);
+
+                    if (callback) {
+                        callback();
+                    }
+                    return; // Exit early since we've handled both thumbs
+                } else if (safeIndex === 1 && value < otherValue) {
+                    // Right thumb trying to go past left thumb
+                    // Keep right thumb at the other thumb's position, move left thumb to new position
+                    const rightThumbNewValue = otherValue;
+                    const leftThumbNewValue = value;
+
+                    // Update both thumbs
+                    this.state.values[0].setValue(leftThumbNewValue);
+                    this.state.values[1].setValue(rightThumbNewValue);
+
+                    if (callback) {
+                        callback();
+                    }
+                    return; // Exit early since we've handled both thumbs
+                }
+            }
+        }
+
         if (animatedValue) {
             animatedValue.setValue(value);
 
@@ -670,6 +751,9 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             startFromZero,
             step = 0,
             trackRightPadding,
+            dualSlider,
+            rangeTrackStyle,
+            rangeTrackTintColor,
             ...other
         } = this.props;
         const {
@@ -756,6 +840,24 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
             ...clearBorderRadius,
         } as ViewStyle;
 
+        // 双滑块范围轨道样式
+        const dualSliderRangeTrackStyle =
+            dualSlider && interpolatedTrackValues.length >= 2
+                ? ({
+                      position: 'absolute',
+                      left: Animated.add(
+                          interpolatedTrackValues[0],
+                          thumbSize.width / 2,
+                      ),
+                      width: Animated.add(
+                          Animated.multiply(interpolatedTrackValues[0], -1),
+                          interpolatedTrackValues[1],
+                      ),
+                      backgroundColor: rangeTrackTintColor,
+                      ...valueVisibleStyle,
+                  } as ViewStyle)
+                : null;
+
         const touchOverflowStyle = this._getTouchOverflowStyle();
 
         return (
@@ -832,6 +934,19 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                             ? renderMinimumTrackComponent()
                             : null}
                     </Animated.View>
+
+                    {/* 双滑块范围轨道 */}
+                    {dualSliderRangeTrackStyle && (
+                        <Animated.View
+                            renderToHardwareTextureAndroid
+                            style={[
+                                styles.track,
+                                trackStyle,
+                                dualSliderRangeTrackStyle,
+                                rangeTrackStyle,
+                            ]}
+                        />
+                    )}
                     {renderTrackMarkComponent &&
                         interpolatedTrackMarksValues &&
                         interpolatedTrackMarksValues.map((value, i) => (

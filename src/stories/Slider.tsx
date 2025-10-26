@@ -308,6 +308,60 @@ const App = () => (
             <SliderContainer caption="<Slider/> with custom minimumTrack">
                 <CustomTrackSlider />
             </SliderContainer>
+
+            {/* 双滑块示例 */}
+            <SliderContainer
+                caption="<Slider/> 双滑块 - 允许交叉滑动"
+                sliderValue={[20, 80]}>
+                <Slider
+                    dualSlider={true}
+                    allowCrossover={true}
+                    minimumValue={0}
+                    maximumValue={100}
+                    // step={1}
+                    minimumTrackTintColor="#1fb28a"
+                    maximumTrackTintColor="#d3d3d3"
+                    rangeTrackTintColor="#ff6b6b"
+                    thumbTintColor="#1a9274"
+                    animateTransitions
+                />
+            </SliderContainer>
+
+            <SliderContainer
+                caption="<Slider/> 双滑块 - 禁止交叉滑动"
+                sliderValue={[30, 70]}>
+                <Slider
+                    dualSlider={true}
+                    allowCrossover={false}
+                    minimumValue={0}
+                    maximumValue={100}
+                    step={1}
+                    minimumTrackTintColor="#1fb28a"
+                    maximumTrackTintColor="#d3d3d3"
+                    rangeTrackTintColor="#4ecdc4"
+                    thumbTintColor="#1a9274"
+                    animateTransitions
+                />
+            </SliderContainer>
+
+            <SliderContainer
+                caption="<Slider/> 双滑块 - 自定义样式"
+                sliderValue={[25, 75]}>
+                <Slider
+                    dualSlider={true}
+                    allowCrossover={true}
+                    minimumValue={0}
+                    maximumValue={100}
+                    step={5}
+                    minimumTrackTintColor="#ff9f43"
+                    maximumTrackTintColor="#ddd"
+                    rangeTrackTintColor="#6c5ce7"
+                    thumbTintColor="#a29bfe"
+                    thumbStyle={customStyles2.thumb}
+                    trackStyle={customStyles2.track}
+                    animateTransitions
+                />
+            </SliderContainer>
         </ScrollView>
     </SafeAreaView>
 );
