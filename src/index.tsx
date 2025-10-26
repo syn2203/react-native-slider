@@ -864,6 +864,15 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                   })()
                 : null;
 
+        // 获取轨道高度（用于未选中区域的渲染）
+        const trackHeight =
+            trackStyle && typeof trackStyle.height === 'number'
+                ? trackStyle.height
+                : styles.track && typeof styles.track.height === 'number'
+                ? styles.track.height
+                : 4; // 默认高度
+        const trackTop = (containerSize.height - trackHeight) / 2; // 计算 top 位置以垂直居中
+
         // 最大值右侧的未选中区域（仅当底色为透明且选中为透明时渲染）
         const rightUnselectedTrackStyle =
             maximumTrackTintColor !== 'transparent' &&
@@ -874,13 +883,13 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
                           // 单滑块：从滑块右侧到轨道右端
                           return {
                               position: 'absolute',
-                              top: (containerSize.height - 4) / 2, // 与轨道高度对齐
+                              top: trackTop,
                               left: Animated.add(
                                   interpolatedTrackValues[0],
-                                  thumbSize.width,
+                                  thumbSize.width / 2,
                               ),
                               right: 0,
-                              height: 4, // 与轨道高度一致
+                              height: trackHeight,
                               backgroundColor: maximumTrackTintColor,
                               ...valueVisibleStyle,
                           } as ViewStyle;
@@ -908,10 +917,13 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
 
                           return {
                               position: 'absolute',
-                              top: (containerSize.height - 4) / 2, // 与轨道高度对齐
-                              left: Animated.add(rightmostPos, thumbSize.width),
+                              top: trackTop,
+                              left: Animated.add(
+                                  rightmostPos,
+                                  thumbSize.width / 2,
+                              ),
                               right: 0,
-                              height: 4, // 与轨道高度一致
+                              height: trackHeight,
                               backgroundColor: maximumTrackTintColor,
                               ...valueVisibleStyle,
                           } as ViewStyle;
@@ -947,10 +959,10 @@ export class Slider extends PureComponent<SliderProps, SliderState> {
 
                       return {
                           position: 'absolute',
-                          top: (containerSize.height - 4) / 2, // 与轨道高度对齐
+                          top: trackTop,
                           left: 0,
                           width: Animated.add(leftmostPos, thumbSize.width / 2),
-                          height: 4, // 与轨道高度一致
+                          height: trackHeight,
                           backgroundColor: maximumTrackTintColor,
                           ...valueVisibleStyle,
                       } as ViewStyle;
